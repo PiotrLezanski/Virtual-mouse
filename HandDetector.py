@@ -9,7 +9,7 @@ class HandDetector():
                 model_complexity = 1,
                 min_detection_confidence=0.5,
                 min_tracking_confidence=0.5):
-
+        self.tipIndexes = [4, 8, 12, 16, 20]
         self.handLandmarks = None
         self.mode = static_image_mode
         self.maxNumberOfHands = max_num_hands
@@ -37,8 +37,8 @@ class HandDetector():
 
         return img
 
-    def findPosition(self, img, handNo = 0):
-        landmarkList = []
+    def findPosition(self, img, handNo = 0, draw = True):
+        self.landmarkList = []
 
         # if any hands is found
         if self.handLandmarks:
@@ -46,28 +46,25 @@ class HandDetector():
             for id, lm in enumerate(cHand.landmark):
                 h, w, c = img.shape
                 cx, cy = int(lm.x * w), int(lm.y * h)
-                landmarkList.append([id, cx, cy])
+                self.landmarkList.append([id, cx, cy])
+                if draw:
+                    cv2.circle(img, (cx, cy), 7, (255,0,0), cv2.FILLED)
 
-        return landmarkList
+        return self.landmarkList
 
-def main():
-    videoCapture = cv2.VideoCapture(0)
-    handDetector = HandDetector()
+    def getOpenedFinders(self):
+        openedFingers = []
+        if len(self.landmarkList) != 0:
+            # thumb
+            if self.landmarkList[self.tipIndexes[0]][1] > self.landmarkList[self.tipIndexes[0]-1][1]:
+                openedFingers.append(1)
+            else:
+                openedFingers.append(0)
 
-    pTime = 0
-    cTime = 0
-    while True:
-        success, img = videoCapture.read()
-        img = handDetector.findAndDrawHands(img)
+            for tipId in range(1, 5):
+                if self.landmarkList[self.tipIndexes[tipId]][2] < self.landmarkList[self.tipIndexes[tipId] - 2][2]:
+                    openedFingers.append(1)
+                else:
+                    openedFingers.append(0)
 
-        cTime = time.time()
-        fps = 1 / (cTime - pTime)
-        pTime = cTime
-
-        cv2.putText(img, str(int(fps)), (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 255), 2)
-
-        cv2.imshow("Capture", img)
-        cv2.waitKey(1)
-
-if __name__ == "__main__":
-    main()
+        return openedFingers
